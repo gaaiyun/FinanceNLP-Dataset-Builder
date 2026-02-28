@@ -1,0 +1,39 @@
+# FinanceNLP Dataset Builder - 依赖包
+
+# HTTP 请求
+requests>=2.31.0
+
+# 数据处理
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Parquet 支持
+pyarrow>=14.0.0
+
+# NLP 处理
+transformers>=4.35.0
+torch>=2.0.0
+sentencepiece>=0.1.99
+
+# 文本处理
+nltk>=3.8.0
+spacy>=3.7.0
+
+# 金融数据
+yfinance>=0.2.31
+
+# HuggingFace 数据集（可选）
+datasets>=2.14.0
+
+# 工具
+tqdm>=4.66.0
+python-dotenv>=1.0.0
+
+# 测试
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# 开发
+black>=23.0.0
+flake8>=6.1.0
+mypy>=1.7.0
