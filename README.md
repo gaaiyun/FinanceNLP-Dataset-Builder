@@ -1,418 +1,188 @@
-# FinanceNLP Dataset Builder
+# FinanceNLP-Dataset-Builder
 
-<div align="center">
+金融 NLP 数据集构建工具：免 API key 数据源 + LLM 自定义标签 + 现有 v1 处理管线。
 
-**金融 NLP 数据集构建工具**
+v1 已有相对完整的采集（Finnhub / NewsAPI / SEC EDGAR）、处理（SimHash 去重、
+规则情感、实体识别）、构建（JSONL / Parquet / HuggingFace）三层模块。v2 在
+不破坏 v1 的前提下加了两件**开箱可用**的东西：
 
-📰 财经新闻采集 | 📄 财报文本解析 | 💬 社交媒体情绪 | 🧹 数据清洗标注 | 📤 多格式导出
+1. **免 API key 的数据源**：v1 几个源全都要付费 key，对教学 / demo / 个人玩家
+   不友好。v2 加 yfinance news（免费、无 key、自带限流）+ 通用 RSS 解析（不依赖
+   `feedparser` 包）+ 合成数据。
+2. **LLM 自定义标签**：v1 内置 FinBERT 三分类情感是固定 schema。v2 允许用户
+   用一句话定义标签字段（"标 sentiment + event_type + 涉及公司"），LLM 按 schema
+   一次返回结构化 JSON。
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## v2 新增模块
 
-</div>
+| 模块 | 干什么 |
+|---|---|
+| `scripts/free_sources.py` | `fetch_yfinance_news(ticker)` / `fetch_rss(url)` / `synthetic_samples(n)`：三个免 key 数据源，统一返回 `NewsSample` |
+| `scripts/llm_labeler.py` | `LabelScheme` 自定义字段方案 + `LLMLabeler` 调 LLM 标 + JSON 解析与 schema 校验。内置 `sentiment_3way` / `event_type` 两个 preset |
+| `__main__.py` | CLI：`collect` / `label` / `pipeline` / `list-presets` |
+| `tests/test_*.py` | 42 个新测试，全部 mock，70ms 跑完 |
 
-## 🌟 功能特性
+## v1 仍保留（不动）
 
-### 数据采集
-- ✅ **财经新闻**: 支持 Finnhub、NewsAPI、Yahoo Finance 等多个数据源
-- ✅ **财报文档**: SEC EDGAR 财报自动抓取和解析
-- ✅ **社交媒体**: Twitter、Reddit 情绪数据采集
-- ✅ **多语言支持**: 中文和英文数据采集
+| 模块 | 干什么 |
+|---|---|
+| `data_collector.py` | Finnhub / NewsAPI / Yahoo Finance / SEC EDGAR / Twitter / Reddit 采集 |
+| `data_processor.py` | SimHash 去重、规则情感、命名实体识别、关键词 |
+| `dataset_builder.py` | JSONL / Parquet / HuggingFace 导出，train/val/test 切分 |
+| `__init__.py` | 顶层 `FinanceNLPBuilder` 一体化入口 |
+| `examples.py` / `quickstart.py` / `test_simple.py` | v1 示例和冒烟测试 |
 
-### 数据处理
-- ✅ **智能去重**: SimHash 算法检测相似文本
-- ✅ **文本标准化**: 时间、货币、数字格式统一
-- ✅ **情感标注**: FinBERT/规则-based 情感分析
-- ✅ **实体识别**: 公司名、人名、金额自动提取
-- ✅ **关键词提取**: 金融领域关键词自动识别
-
-### 数据集构建
-- ✅ **多格式导出**: JSON、JSONL、CSV、Parquet
-- ✅ **数据集划分**: 自动划分 train/val/test
-- ✅ **HuggingFace**: 直接导出为 HF Dataset 格式
-- ✅ **数据卡片**: 自动生成数据集说明文档
-
-## 🚀 快速开始
-
-### 1. 安装依赖
+## 安装
 
 ```bash
-cd workspace/skills/finance-nlp-dataset
 pip install -r requirements.txt
+
+# 可选：v2 用 yfinance 数据源
+pip install yfinance
+
+# 可选：v2 用 LLM 标注
+pip install openai      # openai / deepseek
+pip install anthropic
 ```
 
-### 2. 配置环境变量
+## 快速开始
 
-创建 `.env` 文件：
+### v2 入口：免 key 数据 + LLM 标注
 
 ```bash
-# 新闻数据源
-FINNHUB_API_KEY=your_finnhub_key
-NEWSAPI_API_KEY=your_newsapi_key
+# 1. 列内置标签 preset
+python __main__.py list-presets
 
-# 社交媒体
-TWITTER_BEARER_TOKEN=your_twitter_token
-REDDIT_CLIENT_ID=your_reddit_client_id
-REDDIT_SECRET=your_reddit_secret
+# 2. 拉合成数据看看格式
+python __main__.py collect --source synthetic --max 5 -o data.jsonl
 
-# 文本处理（可选）
-OPENAI_API_KEY=your_openai_key
+# 3. 从 yfinance 抓真实新闻
+python __main__.py collect --source yfinance --ticker AAPL --max 10 -o aapl.jsonl
+
+# 4. 从 RSS 抓
+python __main__.py collect --source rss \
+    --url https://feeds.bloomberg.com/markets/news.rss --max 20 -o bloomberg.jsonl
+
+# 5. 用 LLM 给 jsonl 数据按 preset 打标签（需 DEEPSEEK_API_KEY）
+python __main__.py label --input aapl.jsonl --preset sentiment_3way \
+    --backend deepseek -o labeled.jsonl
+
+# 6. 自定义标签 schema
+python __main__.py label --input aapl.jsonl \
+    --schema-json '{"sentiment":["positive","negative","neutral"],"event_type":["earnings","M&A","other"],"impact_score":"float[0-1]"}' \
+    --schema-desc "金融新闻情绪 + 事件类型 + 影响力分数" \
+    -o labeled.jsonl
+
+# 7. 一条龙：collect → label
+python __main__.py pipeline --source synthetic --max 6 \
+    --preset event_type --backend deepseek -o dataset.jsonl
 ```
 
-### 3. 基本使用
+### 库调用
 
 ```python
-from finance_nlp_dataset import FinanceNLPBuilder
+# 免 key 拉数据
+from scripts.free_sources import fetch_yfinance_news, fetch_rss
 
-# 初始化构建器
-builder = FinanceNLPBuilder(
-    output_dir="./datasets",
-    language="en",
-    sentiment_model="rules"  # 使用规则-based 情感分析
+news = fetch_yfinance_news("AAPL", max_items=20)
+rss_items = fetch_rss("https://feeds.bloomberg.com/markets/news.rss")
+
+# LLM 标注
+from scripts.llm_labeler import LLMClient, LLMLabeler, LabelScheme
+
+scheme = LabelScheme(
+    fields={
+        "sentiment": ["positive", "negative", "neutral"],
+        "affected_companies": "list[str]",
+        "impact_score": "float[0-1]",
+    },
+    description="金融新闻三维标注",
 )
 
-# 采集财经新闻
-news_data = builder.collect_news(
-    symbols=["AAPL", "TSLA", "NVDA"],
-    days=7,
-    sources=["finnhub"]
-)
-
-# 数据清洗和标注
-cleaned_data = builder.clean_and_label(
-    data=news_data,
-    tasks=["dedup", "normalize", "sentiment"]
-)
-
-# 导出数据集
-output_path = builder.export_dataset(
-    data=cleaned_data,
-    filename="finance_news_dataset",
-    format="json"
-)
-
-print(f"数据集已导出：{output_path}")
+labeler = LLMLabeler(LLMClient(backend="deepseek"))
+samples = labeler.label_batch([n.text for n in news], scheme)
+for s in samples:
+    print(s.labels)
+# {'sentiment': 'positive', 'affected_companies': ['AAPL'], 'impact_score': 0.7}
 ```
 
-### 4. 一键构建完整数据集
+### v1 入口（仍然能用）
 
 ```python
-builder = FinanceNLPBuilder(
-    output_dir="./datasets",
-    language="en"
-)
+from __init__ import FinanceNLPBuilder
 
-# 一键完成所有步骤
-output_path = builder.build_complete_dataset(
-    symbols=["AAPL", "MSFT", "GOOGL"],
-    news_days=7,
-    social_days=3,
-    quarters=["Q4"],
-    output_filename="complete_finance_nlp_dataset"
-)
+builder = FinanceNLPBuilder(language="en", sentiment_model="finbert")
+# ... 走 v1 的 collect/process/build 全流程
 ```
 
-## 📖 详细文档
+## 内置标签 preset
 
-### 数据采集
+| 名称 | 字段 |
+|---|---|
+| `sentiment_3way` | `sentiment`: positive / negative / neutral |
+| `event_type` | `sentiment` + `event_type` (earnings/M&A/regulatory/product/macro/other) + `affected_companies: list[str]` |
 
-#### 财经新闻采集
+自定义任何字段方案：传 `--schema-json` 给 CLI 或 `LabelScheme(fields={...})` 给库。
+支持单选（列表）、列表字段（`"list[str]"`）、浮点（`"float[0-1]"`）、整数（`"int"`）。
 
-```python
-# 多源采集
-news_data = builder.collect_news(
-    symbols=["AAPL", "TSLA"],
-    days=7,                    # 采集 7 天内的新闻
-    sources=["finnhub", "newsapi", "yahoo"],  # 多个数据源
-    categories=["company", "market"]  # 新闻类别
-)
+## 设计取舍
+
+- **LLM 缺 key 直接 raise**：v2 的 LLMLabeler 强依赖 LLM；想要 fallback 用
+  v1 的 `data_processor.DataProcessor` 走规则标注。**不静默退化** —— 否则用户
+  以为拿到的是 LLM 高质量标签，实际是规则法。
+- **RSS 解析不依赖 feedparser**：用 stdlib + 正则，少一个依赖。够大多数 RSS 用，
+  Atom feed 不一定能解析。
+- **yfinance 字段名兼容**：yfinance 不同版本的 `.news` 返回字段名（title vs
+  headline，link vs url）有差异，做了兼容。
+- **批量标注串行**：v2 的 `label_batch` 不内置并发 —— 不同 LLM 服务的速率限制
+  千差万别，并发策略让调用方决定。
+- **JSON 解析 best-effort**：单选字段值不在选项里 → 设 None，不抛错；列表字段
+  不是 list → 设空列表。这样小批量里有一两条 LLM 跑歪也不影响主流程。
+
+## 项目结构
+
+```
+FinanceNLP-Dataset-Builder/
+├── __main__.py                    # v2 CLI 统一入口
+├── __init__.py                    # v1 顶层 API（FinanceNLPBuilder）
+├── scripts/                       # v2 模块
+│   ├── free_sources.py            # 免 key 数据源（yfinance/rss/synthetic）
+│   └── llm_labeler.py             # LLM 自定义标签
+├── data_collector.py              # v1：6 个付费数据源
+├── data_processor.py              # v1：去重 + 情感 + NER + 关键词
+├── dataset_builder.py             # v1：导出 JSONL/Parquet/HF
+├── examples.py                    # v1：用法示例
+├── quickstart.py                  # v1：5 分钟上手
+├── test_simple.py                 # v1：冒烟测试（imports / 模块结构）
+├── tests/                         # v2 pytest（42 个，全 mock）
+│   ├── test_free_sources.py
+│   └── test_llm_labeler.py
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
-#### 财报解析
-
-```python
-earnings_data = builder.parse_earnings(
-    symbols=["AAPL", "MSFT"],
-    quarters=["Q1", "Q2", "Q3", "Q4"],
-    years=[2023, 2024],
-    source="sec_edgar"
-)
-```
-
-#### 社交媒体情绪
-
-```python
-social_data = builder.collect_social_sentiment(
-    symbols=["TSLA", "NVDA"],
-    platforms=["twitter", "reddit"],
-    days=3,
-    limit_per_symbol=100
-)
-```
-
-### 数据处理
-
-#### 自定义处理流程
-
-```python
-# 单独调用处理功能
-processor = builder.processor
-
-# 去重
-deduped = processor.deduplicate(raw_data)
-
-# 标准化
-normalized = processor.normalize_text(deduped)
-
-# 情感标注
-labeled = processor.add_sentiment_labels(normalized)
-
-# 实体识别
-with_entities = processor.extract_entities(labeled)
-
-# 关键词提取
-final_data = processor.extract_keywords(with_entities)
-```
-
-#### 配置处理参数
-
-```python
-builder = FinanceNLPBuilder(
-    dedup_threshold=0.85,      # 去重相似度阈值
-    min_text_length=50,        # 最小文本长度
-    max_text_length=5000,      # 最大文本长度
-    sentiment_model="finbert", # finbert/openai/rules
-    entity_recognition=True,   # 启用实体识别
-    keyword_extraction=True    # 启用关键词提取
-)
-```
-
-### 数据集导出
-
-#### 多格式导出
-
-```python
-# JSON 格式
-builder.export_dataset(data, "dataset", format="json")
-
-# JSONL 格式（适合 LLM 训练）
-builder.export_dataset(data, "dataset", format="jsonl")
-
-# CSV 格式（适合传统 ML）
-builder.export_dataset(data, "dataset", format="csv")
-
-# Parquet 格式（适合大数据）
-builder.export_dataset(data, "dataset", format="parquet")
-
-# HuggingFace Dataset
-builder.export_dataset(data, "dataset", format="hf_dataset")
-```
-
-#### 数据集划分
-
-```python
-# 自动划分 train/val/test
-builder.export_dataset(
-    data=data,
-    filename="dataset",
-    split={
-        "train": 0.8,
-        "val": 0.1,
-        "test": 0.1
-    }
-)
-```
-
-## 📊 输出数据格式
-
-### 新闻数据
-
-```json
-{
-  "id": "news_001",
-  "type": "news",
-  "title": "Apple Reports Record Q4 Earnings",
-  "content": "Apple Inc. announced record-breaking...",
-  "source": "finnhub",
-  "symbols": ["AAPL"],
-  "published_at": "2024-01-15T10:30:00Z",
-  "sentiment": "positive",
-  "sentiment_score": 0.85,
-  "entities": [
-    {"text": "Apple Inc.", "type": "ORGANIZATION"},
-    {"text": "Tim Cook", "type": "PERSON"}
-  ],
-  "keywords": ["earnings", "revenue", "growth", "Apple"],
-  "language": "en"
-}
-```
-
-### 财报数据
-
-```json
-{
-  "id": "earnings_001",
-  "type": "earnings",
-  "symbol": "AAPL",
-  "quarter": "Q4",
-  "year": 2024,
-  "filing_date": "2024-01-25",
-  "document_text": "Apple Inc. 10-K Annual Report...",
-  "sections": {
-    "revenue": "Revenue increased by 8%...",
-    "risk_factors": "Risk factors include..."
-  },
-  "metrics": {
-    "revenue": 119500000000,
-    "net_income": 33900000000
-  },
-  "language": "en"
-}
-```
-
-### 社交媒体数据
-
-```json
-{
-  "id": "social_001",
-  "type": "social_media",
-  "platform": "twitter",
-  "symbol": "TSLA",
-  "text": "$TSLA production numbers look amazing! 🚀",
-  "author": "investor_joe",
-  "posted_at": "2024-01-15T14:22:00Z",
-  "sentiment": "positive",
-  "sentiment_score": 0.92,
-  "engagement": {
-    "likes": 1250,
-    "retweets": 340,
-    "comments": 89
-  },
-  "language": "en"
-}
-```
-
-## 🧪 测试
-
-运行单元测试：
+## 测试
 
 ```bash
-python tests.py
+# v2 测试（mock 干净，CI 友好）
+pytest tests/ --no-cov
+
+# v1 冒烟
+python test_simple.py
 ```
 
-运行示例：
+`tests.py`（v1 留下来的，import 路径假设包名 `finance_nlp_dataset` 但本仓库
+目录名含连字符，是错的）已知不可运行 —— 实际效用被 `test_simple.py` 替代。
 
-```bash
-python examples.py
-```
+## 已知限制
 
-## 📁 项目结构
+- `fetch_yfinance_news` 调的是 Yahoo Finance 内部 API，没正式 SLA，可能被限流。
+- `fetch_rss` 不支持 Atom feed（用 `<entry>` 而非 `<item>` 的 feed）。
+- LLM 标注成本：每条样本一次调用，大规模标注（>10k 条）账单会上来。
+- LLM 输出偶尔不合规（不是有效 JSON），`label_batch(skip_errors=True)` 会把这些
+  样本的 labels 全填 None，需要自己再过一遍。
 
-```
-finance-nlp-dataset/
-├── SKILL.md              # 技能描述
-├── __init__.py           # 主模块
-├── data_collector.py     # 数据采集
-├── data_processor.py     # 数据处理
-├── dataset_builder.py    # 数据集构建
-├── examples.py           # 使用示例
-├── tests.py             # 单元测试
-├── requirements.txt      # 依赖包
-└── README.md            # 本文档
-```
+## 许可
 
-## 🔧 配置选项
-
-### 完整配置示例
-
-```python
-builder = FinanceNLPBuilder(
-    # 输出配置
-    output_dir="./datasets",
-    language="zh",
-    
-    # 数据源配置
-    news_sources=["finnhub", "newsapi", "yahoo"],
-    social_platforms=["twitter", "reddit"],
-    
-    # 处理配置
-    dedup_threshold=0.85,
-    min_text_length=50,
-    max_text_length=5000,
-    sentiment_model="finbert",
-    entity_recognition=True,
-    keyword_extraction=True,
-    
-    # 导出配置
-    export_format="parquet",
-    compress=True
-)
-```
-
-## 🎯 使用场景
-
-### 1. 金融情感分析训练数据
-
-```python
-# 采集新闻和社交媒体数据
-news = builder.collect_news(symbols=["AAPL"], days=30)
-social = builder.collect_social_sentiment(symbols=["AAPL"], days=30)
-
-# 合并和标注
-all_data = news + social
-labeled = builder.clean_and_label(all_data, tasks=["sentiment"])
-
-# 导出
-builder.export_dataset(labeled, "sentiment_dataset", split={"train": 0.8, "test": 0.2})
-```
-
-### 2. 财经新闻分类数据集
-
-```python
-news = builder.collect_news(
-    symbols=["AAPL", "GOOGL", "MSFT"],
-    days=60,
-    categories=["company", "market", "technology"]
-)
-
-# 添加关键词和实体
-processed = builder.clean_and_label(news, tasks=["entities", "keywords"])
-
-builder.export_dataset(processed, "news_classification_dataset", format="jsonl")
-```
-
-### 3. 财报问答数据集
-
-```python
-earnings = builder.parse_earnings(
-    symbols=["AAPL", "MSFT"],
-    quarters=["Q1", "Q2", "Q3", "Q4"],
-    years=[2023, 2024]
-)
-
-builder.export_dataset(earnings, "earnings_qa_dataset", format="json")
-```
-
-## ⚠️ 注意事项
-
-1. **API Keys**: 部分数据源需要 API 密钥，请提前配置
-2. **速率限制**: 注意 API 调用频率限制
-3. **数据质量**: 建议人工抽检数据质量
-4. **存储空间**: 大规模数据集需要充足存储空间
-5. **内存使用**: 处理大量数据时注意内存占用
-
-## 📝 许可证
-
-MIT License
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📧 联系
-
-如有问题，请通过 Issue 或邮件联系。
-
----
-
-**派蒙提示**: 数据集构建完成记得给派蒙摩拉肉奖励哦~ ⭐🍖
+MIT
