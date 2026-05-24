@@ -12,9 +12,16 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 
-from .data_collector import DataCollector
-from .data_processor import DataProcessor
-from .dataset_builder import DatasetBuilder
+try:
+    from .data_collector import DataCollector
+    from .data_processor import DataProcessor
+    from .dataset_builder import DatasetBuilder
+except ImportError:
+    # 仓库目录名含连字符（FinanceNLP-Dataset-Builder），不是合法 Python 包名，
+    # 所以同时支持作为脚本（绝对 import）和作为包（相对 import）使用。
+    from data_collector import DataCollector
+    from data_processor import DataProcessor
+    from dataset_builder import DatasetBuilder
 
 # 配置日志
 logging.basicConfig(
