@@ -30,7 +30,7 @@ def example_basic_usage():
     )
     
     # 采集新闻数据
-    print("\n📰 采集财经新闻...")
+    print("\n采集财经新闻...")
     news_data = builder.collect_news(
         symbols=["AAPL", "TSLA"],
         days=3,
@@ -39,7 +39,7 @@ def example_basic_usage():
     print(f"采集到 {len(news_data)} 条新闻")
     
     # 数据清洗和标注
-    print("\n🧹 数据清洗和标注...")
+    print("\n数据清洗和标注...")
     cleaned_data = builder.clean_and_label(
         data=news_data,
         tasks=["dedup", "normalize", "sentiment"]
@@ -47,7 +47,7 @@ def example_basic_usage():
     print(f"处理后剩余 {len(cleaned_data)} 条数据")
     
     # 导出数据集
-    print("\n📤 导出数据集...")
+    print("\n导出数据集...")
     output_path = builder.export_dataset(
         data=cleaned_data,
         filename="example_news_dataset",
@@ -76,7 +76,7 @@ def example_complete_pipeline():
     )
     
     # 一键构建完整数据集
-    print("\n🚀 启动完整数据集构建流程...")
+    print("\n启动完整数据集构建流程...")
     output_path = builder.build_complete_dataset(
         symbols=["AAPL", "NVDA"],
         news_days=5,
@@ -85,7 +85,7 @@ def example_complete_pipeline():
         output_filename="complete_finance_nlp_dataset"
     )
     
-    print(f"\n✅ 完整数据集构建完成！")
+    print(f"\n完整数据集构建完成！")
     print(f"输出路径：{output_path}")
     
     return output_path
@@ -108,14 +108,14 @@ def example_custom_processing():
     )
     
     # 采集数据
-    print("\n📰 采集数据...")
+    print("\n采集数据...")
     news_data = builder.collect_news(
         symbols=["MSFT", "GOOGL"],
         days=7
     )
     
     # 自定义处理流程
-    print("\n🔧 自定义处理流程...")
+    print("\n自定义处理流程...")
     
     # 1. 只去重
     deduped = builder.processor.deduplicate(news_data)
@@ -136,7 +136,7 @@ def example_custom_processing():
         format="jsonl"  # JSONL 格式
     )
     
-    print(f"\n✅ 自定义处理完成！")
+    print(f"\n自定义处理完成！")
     print(f"输出路径：{output_path}")
     
     return output_path
@@ -151,7 +151,7 @@ def example_dataset_statistics(data_path: str):
     import json
     
     # 加载数据
-    print(f"\n📊 加载数据集：{data_path}")
+    print(f"\n加载数据集：{data_path}")
     with open(data_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
@@ -163,7 +163,7 @@ def example_dataset_statistics(data_path: str):
         item_type = item.get('type', 'unknown')
         type_counts[item_type] = type_counts.get(item_type, 0) + 1
     
-    print("📋 数据类型分布:")
+    print("数据类型分布:")
     for item_type, count in type_counts.items():
         print(f"  - {item_type}: {count} 条 ({count/len(data)*100:.1f}%)")
     
@@ -173,7 +173,7 @@ def example_dataset_statistics(data_path: str):
         sentiment = item.get('sentiment', 'unknown')
         sentiment_counts[sentiment] = sentiment_counts.get(sentiment, 0) + 1
     
-    print("\n💝 情感分布:")
+    print("\n情感分布:")
     for sentiment, count in sentiment_counts.items():
         print(f"  - {sentiment}: {count} 条 ({count/len(data)*100:.1f}%)")
     
@@ -183,12 +183,12 @@ def example_dataset_statistics(data_path: str):
         source = item.get('source', 'unknown')
         source_counts[source] = source_counts.get(source, 0) + 1
     
-    print("\n📰 数据来源分布:")
+    print("\n数据来源分布:")
     for source, count in source_counts.items():
         print(f"  - {source}: {count} 条")
     
     # 显示样本
-    print("\n📝 数据样本:")
+    print("\n数据样本:")
     for i, item in enumerate(data[:3], 1):
         print(f"\n样本 {i}:")
         print(f"  类型：{item.get('type', 'N/A')}")
@@ -200,13 +200,13 @@ def example_dataset_statistics(data_path: str):
 
 def main():
     """主函数"""
-    print("\n" + "⭐" * 30)
+    print("\n" + "=" * 30)
     print("FinanceNLP Dataset Builder - 使用示例")
-    print("⭐" * 30 + "\n")
-    
+    print("=" * 30 + "\n")
+
     # 检查 API Keys
     if not os.getenv("FINNHUB_API_KEY"):
-        print("⚠️  警告：FINNHUB_API_KEY 未配置")
+        print("警告：FINNHUB_API_KEY 未配置")
         print("   请设置环境变量或使用规则-based 情感分析\n")
     
     try:
@@ -242,10 +242,10 @@ def main():
         if output_path and os.path.exists(output_path):
             example_dataset_statistics(output_path)
         
-        print("\n✅ 所有示例运行完成！")
-        
+        print("\n所有示例运行完成！")
+
     except Exception as e:
-        print(f"\n❌ 运行失败：{str(e)}")
+        print(f"\n运行失败：{str(e)}")
         import traceback
         traceback.print_exc()
 

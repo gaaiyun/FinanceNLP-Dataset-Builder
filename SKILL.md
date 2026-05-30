@@ -3,11 +3,11 @@
 ## 技能描述
 
 本技能提供完整的金融 NLP 数据集构建框架，支持：
-- 📰 财经新闻数据采集（多源聚合）
-- 📄 财报文本解析（PDF/HTML）
-- 💬 社交媒体情绪数据（Twitter/Reddit/微博）
-- 🧹 数据清洗和标注（去重、标准化、情感标注）
-- 📤 数据集导出（JSON/CSV/Parquet 格式）
+- 财经新闻数据采集（多源聚合）
+- 财报文本解析（PDF/HTML）
+- 社交媒体情绪数据（Twitter/Reddit/微博）
+- 数据清洗和标注（去重、标准化、情感标注）
+- 数据集导出（JSON/CSV/Parquet 格式）
 
 ## 使用场景
 
@@ -165,7 +165,7 @@ builder.export_dataset(
   "type": "social_media",
   "platform": "twitter",
   "symbol": "TSLA",
-  "text": "$TSLA production numbers look amazing! 🚀",
+  "text": "$TSLA production numbers look amazing!",
   "author": "investor_joe",
   "posted_at": "2024-01-15T14:22:00Z",
   "sentiment": "positive",
