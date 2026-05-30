@@ -21,9 +21,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # tests/ 只用标准库 + pytest（网络/LLM 全部 mock），走轻量路径：
-          # 不安装 requirements.txt 里的 torch/transformers/spacy 等重模型依赖。
-          python -m pip install pytest
+          # 走轻量路径：不安装 requirements.txt 里的 torch/transformers/spacy/pandas
+          # 等重依赖。tests/ 本身的逻辑只用标准库 + pytest（网络/LLM 全部 mock），
+          # 但 pytest 收集阶段会导入仓库根目录的 __init__.py（包入口），其
+          # data_collector 模块在导入时需要 requests，故一并安装。
+          python -m pip install pytest requests
 
       - name: Run tests
         run: |
