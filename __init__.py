@@ -371,5 +371,5 @@ def create_builder(**kwargs) -> FinanceNLPBuilder:
 
 # 版本信息
 __version__ = "1.0.0"
-__author__ = "OpenClaw FinanceNLP Team"
+__author__ = "gaaiyun"
 __all__ = ["FinanceNLPBuilder", "create_builder"]

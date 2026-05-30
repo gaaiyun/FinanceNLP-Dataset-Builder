@@ -357,7 +357,7 @@ df = pd.read_parquet('{filename}.parquet')
 @dataset{{finance_nlp_{datetime.now().year},
   title = {{{metadata.get('name', filename)}}},
   year = {{{datetime.now().year}}},
-  author = {{{metadata.get('author', 'OpenClaw FinanceNLP Team')}}}
+  author = {{{metadata.get('author', 'gaaiyun')}}}
 }}
 ```
 """
